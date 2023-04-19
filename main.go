@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
+
+	"go-scripture/pkg/api"
+	"go-scripture/pkg/embeddings"
+	"go-scripture/pkg/middleware"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/GoScipture-API/pkg/api"
-	"github.com/GoScipture-API/pkg/embeddings"
-	"github.com/GoScipture-API/pkg/middleware"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 	router.Use(middleware.LoggingMiddleware)
 
 	fmt.Println("Loading embeddings...")
-	embeddingsByChapter, embeddingsByVerse := embeddings.LoadEmbeddings("embeddings/chapter/KJV_Bible_Embeddings_by_Chapter.csv", "embeddings/verse/KJV_Bible_Embeddings.csv")
+	embeddingsByChapter, embeddingsByVerse := embeddings.LoadEmbeddings("embeddingsData/chapter/KJV_Bible_Embeddings_by_Chapter.csv", "embeddingsData/verse/KJV_Bible_Embeddings.csv")
 	fmt.Println("Embeddings loaded")
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

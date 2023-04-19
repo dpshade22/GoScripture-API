@@ -2,13 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"go-scripture/pkg/embeddings"
+	"go-scripture/pkg/similarity"
 	"net/http"
 	"strconv"
-
-	"github.com/gorilla/mux"
-	"github.com/your_username/your_project/pkg/embeddings"
-	"github.com/your_username/your_project/pkg/similarity"
 )
+
+type Embedding = embeddings.Embedding
 
 // Functions: handleSearch
 func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding) {
@@ -17,9 +18,9 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 	xStr := r.URL.Query().Get("x")
 
 	if searchBy != "" && query != "" {
-		embeddings := embeddingsByChapter
-		if searchBy == "verse" || searchBy == "passage" {
-			embeddings = embeddingsByVerse
+		embeddings := embeddingsByVerse
+		if searchBy == "chapter" || searchBy == "passage" {
+			embeddings = embeddingsByChapter
 		}
 
 		x, err := strconv.Atoi(xStr)
@@ -27,10 +28,10 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 			x = 0
 		}
 
-		found := findSimilarities(query, embeddings, x)
+		found := similarity.FindSimilarities(query, embeddings, x)
 
 		if searchBy == "passage" {
-			found = processPassageResults(found, x)
+			found = similarity.FindBestPassages(similarity.FindSimilarities(query, embeddingsByVerse, len(embeddingsByVerse)), 5, 500)
 		}
 
 		jsonArray := make([]map[string]interface{}, len(found))
