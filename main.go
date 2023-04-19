@@ -7,9 +7,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"GoScipture-API/pkg/api"
-	"GoScipture-API/pkg/embeddings"
-	"GoScipture-API/pkg/middleware"
+	"github.com/GoScipture-API/pkg/api"
+	"github.com/GoScipture-API/pkg/embeddings"
+	"github.com/GoScipture-API/pkg/middleware"
 )
 
 func main() {
