@@ -11,7 +11,7 @@ import (
 )
 
 // Functions: handleSearch
-func handleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding) {
+func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding) {
 	searchBy := r.URL.Query().Get("search_by")
 	query := r.URL.Query().Get("query")
 	xStr := r.URL.Query().Get("x")

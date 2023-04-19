@@ -7,7 +7,7 @@ import (
 )
 
 // loggingMiddleware is a custom middleware function that logs incoming HTTP requests.
-func loggingMiddleware(next http.Handler) http.Handler {
+func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Log the details of the incoming request.
 		log.Printf("Incoming request: Method=%s, Path=%s, RemoteAddr=%s, Time=%s\n",
