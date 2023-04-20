@@ -43,7 +43,7 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 				"similarities": e.Similarity,
 			}
 		}
-		fmt.Println(jsonArray)
+		// fmt.Println(jsonArray)
 		fmt.Printf("Search by: %s, Query: %s", searchBy, query)
 		json.NewEncoder(w).Encode(jsonArray)
 	} else {

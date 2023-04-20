@@ -14,6 +14,7 @@ type Embedding struct {
 	Verse      string
 	Embedding  []float64
 	Similarity float64
+	Index      int
 }
 
 // Functions: loadEmbeddings, loadEmbeddingsFromFile
@@ -70,6 +71,7 @@ func loadEmbeddingsFromFile(file string, db string) []Embedding {
 			Location:  location,
 			Verse:     verse,
 			Embedding: embedding,
+			Index:     i,
 		})
 	}
 	return embeddings

@@ -98,7 +98,10 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 			if bestVerse.Len() > 0 {
 				bestVerse.WriteString(" ")
 			}
-			bestVerse.WriteString(e.Verse)
+			verseNum := e.Location[strings.LastIndex(e.Location, ":")+1:]
+			verseStr := verseNum + " " + e.Verse
+
+			bestVerse.WriteString(verseStr)
 		}
 
 		// Append the best sequence to the list of best sequences.
