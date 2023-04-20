@@ -32,6 +32,7 @@ func FindSimilarities(query string, embeddings []Embedding, x int) []Embedding {
 
 	resp, err := client.CreateEmbeddings(context.Background(), request)
 	if err != nil {
+		fmt.Printf("Error creating embeddings: %s", err)
 		panic(err)
 	}
 
@@ -56,7 +57,9 @@ func FindSimilarities(query string, embeddings []Embedding, x int) []Embedding {
 		return embeddings
 	}
 }
+
 func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
+
 	// Sort the verses list by Location and Verse.
 	sort.Slice(verses, func(i, j int) bool {
 		if verses[i].Location == verses[j].Location {
@@ -67,13 +70,17 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 
 	var bestSequences []Embedding
 	for i := 0; i < numSequences; i++ {
+		fmt.Println("\nI: ", i)
 		// Iterate over the verses list using a sliding window of size `windowSize`.
 		bestWindow := make([]Embedding, windowSize)
 		bestScore := 0.0
 
+		fmt.Print("Best window: ", bestWindow)
+		fmt.Println("Best score: ", bestScore)
 		for j := i; j <= len(verses)-windowSize && j >= 0; j += numSequences {
+			fmt.Println("J: ", j)
 			window := verses[j : j+windowSize]
-
+			fmt.Println("Window: ", window)
 			// Calculate the average similarity score for all Embedding structs in the window.
 			sumScore := 0.0
 			for _, e := range window {
@@ -87,6 +94,9 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 				bestScore = avgScore
 			}
 		}
+
+		fmt.Print("Best window: ", bestWindow)
+		fmt.Println("Best score: ", bestScore)
 
 		// Extract book and chapter from the Location field of the first verse in the best window.
 		bookAndChapter := bestWindow[0].Location[:strings.LastIndex(bestWindow[0].Location, ":")]
