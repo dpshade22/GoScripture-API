@@ -17,6 +17,10 @@ import (
 )
 
 type Embedding = embeddings.Embedding
+type Tuple struct {
+	First  int
+	Second float64
+}
 
 func FindSimilarities(query string, embeddings []Embedding) []Embedding {
 	godotenv.Load()
@@ -133,7 +137,7 @@ func cosineSimilarity(a []float64, b []float64) float64 {
 }
 
 func MergePassageResults(unmergedBestPassageResults []Embedding, verseMap map[string]string) []Embedding {
-	chapters := make(map[string][]int)
+	chapters := make(map[string][]Tuple)
 
 	// Define a regular expression pattern
 	pattern := `^([\w\s]+ \d{1,2}):(\d+)-(\d+)`
@@ -149,41 +153,104 @@ func MergePassageResults(unmergedBestPassageResults []Embedding, verseMap map[st
 			if ok {
 				if len(matches[0]) > 2 {
 					num, _ := strconv.Atoi(matches[0][2])
-					chapters[matches[0][1]] = append(chapters[matches[0][1]], num)
+					verseSimilarity := Tuple{num, unmergedBestPassageResults[i].Similarity}
+					chapters[matches[0][1]] = append(chapters[matches[0][1]], verseSimilarity)
 				}
 			} else {
 				if len(matches[0]) > 2 {
 					num, _ := strconv.Atoi(matches[0][2])
-					chapters[matches[0][1]] = make([]int, 0)
-					chapters[matches[0][1]] = append(chapters[matches[0][1]], num)
+					chapters[matches[0][1]] = make([]Tuple, 0)
+					verseSimilarity := Tuple{num, unmergedBestPassageResults[i].Similarity}
+					chapters[matches[0][1]] = append(chapters[matches[0][1]], verseSimilarity)
 				}
 			}
 		}
 	}
 
-	// for k, v := range chapters {
-	// 	fmt.Print("k: ", k, " v: ", v, "\n")
-	// }
-
-	return []Embedding{}
+	return buildPassageEmbeddings(chapters, verseMap)
 }
 
 func BuildVerseMap(embeddingsByVerse []Embedding) map[string]string {
 	verseMap := make(map[string]string)
 
 	// Define a regular expression pattern
-	pattern := `^([\w\s]+ \d{1,2}:\d+)`
-
+	pattern := `^([\w\s]+ \d+:\d+)`
+	verseNum := `^[\w\s]+ \d+:(\d+)`
 	// Create a regular expression object
 	regex := regexp.MustCompile(pattern)
+	verseRegex := regexp.MustCompile(verseNum)
 
 	for i, e := range embeddingsByVerse {
 		matches := regex.FindStringSubmatch(embeddingsByVerse[i].Location)
+		regexVerse := verseRegex.FindStringSubmatch(embeddingsByVerse[i].Location)
 		if len(matches) > 0 {
-			verseMap[matches[0]] = e.Verse
+			number := regexVerse[1]
+			verseMap[matches[0]] = number + " " + e.Verse
 		}
 	}
 	return verseMap
+}
+
+func buildPassageEmbeddings(chapters map[string][]Tuple, verseMap map[string]string) []Embedding {
+	newPassages := make([]Embedding, 0)
+
+	for k, v := range chapters {
+		sort.Slice(v, func(i, j int) bool {
+			return v[i].First < v[j].First
+		})
+
+		firstRange := 0
+		consec := ""
+		avgSim := 0.0
+		runningCount := 0
+
+		for i := 0; i < len(v); i++ {
+			loc := k + ":" + strconv.Itoa(v[i].First)
+			avgSim += v[i].Second
+			runningCount++
+
+			if i < len(v)-1 && (v[i].First+1 == v[i+1].First || v[i].First+2 == v[i+1].First) {
+				if runningCount == 1 {
+					firstRange = v[i].First
+				}
+				consec += getVerse(loc, verseMap) + " "
+				if v[i].First+2 == v[i+1].First {
+					consec += getVerse(k+":"+strconv.Itoa(v[i].First+1), verseMap) + " "
+				}
+			} else {
+				newE := Embedding{}
+				if runningCount > 1 {
+					newE = Embedding{
+						Location:   k + ":" + strconv.Itoa(firstRange) + "-" + strconv.Itoa(v[i].First),
+						Verse:      consec + getVerse(loc, verseMap),
+						Similarity: avgSim / float64(runningCount),
+					}
+				} else {
+					newE = Embedding{
+						Location:   loc,
+						Verse:      getVerse(loc, verseMap),
+						Similarity: avgSim,
+					}
+				}
+				newPassages = append(newPassages, newE)
+
+				// Reset consec, avgSim, and runningCount for the next passage
+				consec = ""
+				avgSim = 0.0
+				runningCount = 0
+				if i < len(v)-1 {
+					firstRange = v[i+1].First
+				}
+			}
+		}
+	}
+
+	// Sort bestSequences by Similarity in descending order.
+	sort.Slice(newPassages, func(i, j int) bool {
+		return newPassages[i].Similarity > newPassages[j].Similarity
+	})
+
+	return newPassages
 }
 
 func getVerse(location string, verseMap map[string]string) string {
