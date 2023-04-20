@@ -134,7 +134,7 @@ func cosineSimilarity(a []float64, b []float64) float64 {
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
-func MergePassageResults(unmergedBestPassageResults []Embedding) []Embedding {
+func MergePassageResults(unmergedBestPassageResults []Embedding, verseMap map[string]string) []Embedding {
 	chapters := make(map[string][]int)
 
 	// Define a regular expression pattern
@@ -170,22 +170,24 @@ func MergePassageResults(unmergedBestPassageResults []Embedding) []Embedding {
 	return []Embedding{}
 }
 
-func BuildVerseMap(embeddingsByVerse []Embedding) map[string]Embedding {
-	verseMap := make(map[string]Embedding)
+func BuildVerseMap(embeddingsByVerse []Embedding) map[string]string {
+	verseMap := make(map[string]string)
 
 	// Define a regular expression pattern
-	pattern := `^([\w\s]+ \d{1,2}):(\d+)-(\d+)`
+	pattern := `^([\w\s]+ \d{1,2}:\d+)`
 
 	// Create a regular expression object
 	regex := regexp.MustCompile(pattern)
 
-	for i, verse := range embeddingsByVerse {
+	for i, e := range embeddingsByVerse {
 		matches := regex.FindStringSubmatch(embeddingsByVerse[i].Location)
-		verseMap[matches[0]] = verse
+		if len(matches) > 0 {
+			verseMap[matches[0]] = e.Verse
+		}
 	}
 	return verseMap
 }
 
-func getVerse(location string, verseMap map[string]Embedding) Embedding {
+func getVerse(location string, verseMap map[string]string) string {
 	return verseMap[location]
 }
