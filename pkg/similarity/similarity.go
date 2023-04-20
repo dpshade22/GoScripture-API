@@ -18,7 +18,7 @@ import (
 
 type Embedding = embeddings.Embedding
 
-func FindSimilarities(query string, embeddings []Embedding, x int) []Embedding {
+func FindSimilarities(query string, embeddings []Embedding) []Embedding {
 	godotenv.Load()
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	client := openai.NewClient(apiKey)
@@ -51,11 +51,7 @@ func FindSimilarities(query string, embeddings []Embedding, x int) []Embedding {
 		return embeddings[i].Similarity > embeddings[j].Similarity
 	})
 
-	if len(embeddings) >= x {
-		return embeddings[:x]
-	} else {
-		return embeddings
-	}
+	return embeddings
 }
 
 func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
@@ -70,17 +66,12 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 
 	var bestSequences []Embedding
 	for i := 0; i < numSequences; i++ {
-		fmt.Println("\nI: ", i)
 		// Iterate over the verses list using a sliding window of size `windowSize`.
 		bestWindow := make([]Embedding, windowSize)
 		bestScore := 0.0
 
-		fmt.Print("Best window: ", bestWindow)
-		fmt.Println("Best score: ", bestScore)
 		for j := i; j <= len(verses)-windowSize && j >= 0; j += numSequences {
-			fmt.Println("J: ", j)
 			window := verses[j : j+windowSize]
-			fmt.Println("Window: ", window)
 			// Calculate the average similarity score for all Embedding structs in the window.
 			sumScore := 0.0
 			for _, e := range window {
@@ -94,9 +85,6 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 				bestScore = avgScore
 			}
 		}
-
-		fmt.Print("Best window: ", bestWindow)
-		fmt.Println("Best score: ", bestScore)
 
 		// Extract book and chapter from the Location field of the first verse in the best window.
 		bookAndChapter := bestWindow[0].Location[:strings.LastIndex(bestWindow[0].Location, ":")]
@@ -173,9 +161,9 @@ func MergePassageResults(unmergedBestPassageResults []Embedding, verseMap map[st
 		}
 	}
 
-	for k, v := range chapters {
-		fmt.Print("k: ", k, " v: ", v, "\n")
-	}
+	// for k, v := range chapters {
+	// 	fmt.Print("k: ", k, " v: ", v, "\n")
+	// }
 
 	return []Embedding{}
 }

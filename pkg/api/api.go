@@ -6,7 +6,6 @@ import (
 	"go-scripture/pkg/embeddings"
 	"go-scripture/pkg/similarity"
 	"net/http"
-	"strconv"
 )
 
 type Embedding = embeddings.Embedding
@@ -15,7 +14,6 @@ type Embedding = embeddings.Embedding
 func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding, verseMap map[string]string) {
 	searchBy := r.URL.Query().Get("search_by")
 	query := r.URL.Query().Get("query")
-	xStr := r.URL.Query().Get("x")
 
 	if searchBy != "" && query != "" {
 		embeddings := embeddingsByVerse
@@ -23,16 +21,13 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 			embeddings = embeddingsByChapter
 		}
 
-		x, err := strconv.Atoi(xStr)
-		if err != nil {
-			x = 0
-		}
-
-		found := similarity.FindSimilarities(query, embeddings, x)
+		found := similarity.FindSimilarities(query, embeddings)
 
 		if searchBy == "passage" {
 			found = similarity.FindBestPassages(found, 2, 500)
 			found = similarity.MergePassageResults(found, verseMap)
+		} else {
+			found = found[:50]
 		}
 
 		jsonArray := make([]map[string]interface{}, len(found))
