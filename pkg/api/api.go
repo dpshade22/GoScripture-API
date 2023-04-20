@@ -12,14 +12,14 @@ import (
 type Embedding = embeddings.Embedding
 
 // Functions: handleSearch
-func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding) {
+func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding, verseMap map[string][]Embedding) {
 	searchBy := r.URL.Query().Get("search_by")
 	query := r.URL.Query().Get("query")
 	xStr := r.URL.Query().Get("x")
 
 	if searchBy != "" && query != "" {
 		embeddings := embeddingsByVerse
-		if searchBy == "chapter" || searchBy == "passage" {
+		if searchBy == "chapter" {
 			embeddings = embeddingsByChapter
 		}
 
@@ -31,7 +31,8 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 		found := similarity.FindSimilarities(query, embeddings, x)
 
 		if searchBy == "passage" {
-			found = similarity.FindBestPassages(similarity.FindSimilarities(query, embeddingsByVerse, len(embeddingsByVerse)), 5, 500)
+			found = similarity.FindBestPassages(found, 2, 500)
+			found = similarity.MergePassageResults(found)
 		}
 
 		jsonArray := make([]map[string]interface{}, len(found))

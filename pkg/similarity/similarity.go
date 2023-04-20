@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"go-scripture/pkg/embeddings"
@@ -130,4 +132,60 @@ func cosineSimilarity(a []float64, b []float64) float64 {
 	}
 
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+func MergePassageResults(unmergedBestPassageResults []Embedding) []Embedding {
+	chapters := make(map[string][]int)
+
+	// Define a regular expression pattern
+	pattern := `^([\w\s]+ \d{1,2}):(\d+)-(\d+)`
+
+	// Create a regular expression object
+	regex := regexp.MustCompile(pattern)
+
+	for i := range unmergedBestPassageResults {
+		// Test if a string matches the pattern
+		matches := regex.FindAllStringSubmatch(unmergedBestPassageResults[i].Location, -1)
+		if len(matches) > 0 && len(matches[0]) > 1 {
+			_, ok := chapters[matches[0][1]]
+			if ok {
+				if len(matches[0]) > 2 {
+					num, _ := strconv.Atoi(matches[0][2])
+					chapters[matches[0][1]] = append(chapters[matches[0][1]], num)
+				}
+			} else {
+				if len(matches[0]) > 2 {
+					num, _ := strconv.Atoi(matches[0][2])
+					chapters[matches[0][1]] = make([]int, 0)
+					chapters[matches[0][1]] = append(chapters[matches[0][1]], num)
+				}
+			}
+		}
+	}
+
+	for k, v := range chapters {
+		fmt.Print("k: ", k, " v: ", v, "\n")
+	}
+
+	return []Embedding{}
+}
+
+func BuildVerseMap(embeddingsByVerse []Embedding) map[string]Embedding {
+	verseMap := make(map[string]Embedding)
+
+	// Define a regular expression pattern
+	pattern := `^([\w\s]+ \d{1,2}):(\d+)-(\d+)`
+
+	// Create a regular expression object
+	regex := regexp.MustCompile(pattern)
+
+	for i, verse := range embeddingsByVerse {
+		matches := regex.FindStringSubmatch(embeddingsByVerse[i].Location)
+		verseMap[matches[0]] = verse
+	}
+	return verseMap
+}
+
+func getVerse(location string, verseMap map[string]Embedding) Embedding {
+	return verseMap[location]
 }
