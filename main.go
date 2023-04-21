@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -23,9 +24,9 @@ func main() {
 	embeddingsByChapter, embeddingsByVerse := embeddings.LoadEmbeddings("embeddingsData/chapter/KJV_Bible_Embeddings_by_Chapter.csv", "embeddingsData/verse/KJV_Bible_Embeddings.csv")
 	fmt.Println("Embeddings loaded")
 
-	fmt.Printf("Building verse map...")
+	fmt.Printf("Building verse map...\n")
 	verseMap := similarity.BuildVerseMap(embeddingsByVerse)
-	fmt.Printf("Verse map built")
+	fmt.Printf("Verse map built\n")
 	// fmt.Println(verseMap)
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +37,18 @@ func main() {
 		api.HandleSearch(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}).Methods("GET")
 
+	// Create a new CORS handler with the desired configuration
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},   // Replace "*" with your desired origin(s) to restrict access
+		AllowedMethods:   []string{"GET"}, // Adjust the allowed HTTP methods as needed
+		AllowedHeaders:   []string{"*"},   // Allow all headers or specify a list
+		AllowCredentials: true,            // Set to true if you want to allow credentials (cookies, etc.)
+		Debug:            false,           // Set to true for debug information
+	})
+
+	// Wrap your router with the CORS handler
+	handler := corsHandler.Handler(router)
+
 	fmt.Println("Server running on http://0.0.0.0:8080")
-	http.ListenAndServe("0.0.0.0:8080", router)
+	http.ListenAndServe("0.0.0.0:8080", handler)
 }

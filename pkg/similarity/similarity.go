@@ -46,9 +46,29 @@ func FindSimilarities(query string, embeddings []Embedding) []Embedding {
 		searchTermVector[i] = float64(v)
 	}
 
-	for i := range embeddings {
+	numWorkers := 8
+	jobs := make(chan int, len(embeddings))
+	results := make(chan Embedding, len(embeddings))
 
-		embeddings[i].Similarity = cosineSimilarity(embeddings[i].Embedding, searchTermVector)
+	// Start worker pool
+	for w := 0; w < numWorkers; w++ {
+		go func() {
+			for i := range jobs {
+				embeddings[i].Similarity = cosineSimilarity(embeddings[i].Embedding, searchTermVector)
+				results <- embeddings[i]
+			}
+		}()
+	}
+
+	// Send jobs
+	for i := range embeddings {
+		jobs <- i
+	}
+	close(jobs)
+
+	// Receive results
+	for i := 0; i < len(embeddings); i++ {
+		embeddings[i] = <-results
 	}
 
 	sort.Slice(embeddings, func(i, j int) bool {
@@ -59,7 +79,6 @@ func FindSimilarities(query string, embeddings []Embedding) []Embedding {
 }
 
 func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
-
 	// Sort the verses list by Location and Verse.
 	sort.Slice(verses, func(i, j int) bool {
 		if verses[i].Location == verses[j].Location {
@@ -199,42 +218,45 @@ func buildPassageEmbeddings(chapters map[string][]Tuple, verseMap map[string]str
 			return v[i].First < v[j].First
 		})
 
-		firstRange := 0
-		consec := ""
+		startRange := -1
+		endRange := -1
 		avgSim := 0.0
 		runningCount := 0
 
 		for i := 0; i < len(v); i++ {
-			loc := k + ":" + strconv.Itoa(v[i].First)
+			// loc := k + ":" + strconv.Itoa(v[i].First)
+
+			if startRange == -1 {
+				startRange = v[i].First
+			}
+			endRange = v[i].First
+
 			avgSim += v[i].Second
 			runningCount++
 
-			if i < len(v)-1 && (v[i].First+1 == v[i+1].First || v[i].First+2 == v[i+1].First || v[i].First+3 == v[i+1].First) {
-				if runningCount == 1 {
-					firstRange = v[i].First
+			// Check if the next verse is not consecutive or if it's the last verse in the array
+			if i == len(v)-1 || (v[i+1].First != v[i].First+1 && v[i+1].First != v[i].First+2 && v[i+1].First != v[i].First+3) {
+				// Rebuild the verses based on the first and last in the current consec range
+				consec := ""
+				for r := startRange; r <= endRange; r++ {
+					loc := k + ":" + strconv.Itoa(r)
+					consec += getVerse(loc, verseMap) + " "
 				}
-				consec += getVerse(loc, verseMap) + " "
-				if v[i].First+2 == v[i+1].First {
-					consec += getVerse(k+":"+strconv.Itoa(v[i].First+1), verseMap) + " "
-				}
-			} else {
-				newE := Embedding{}
-				if runningCount > 1 {
-					newE = Embedding{
-						Location:   k + ":" + strconv.Itoa(firstRange) + "-" + strconv.Itoa(v[i].First),
-						Verse:      consec + getVerse(loc, verseMap),
+
+				if endRange > startRange { // Check if the passage has more than one verse
+					newE := Embedding{
+						Location:   k + ":" + strconv.Itoa(startRange) + "-" + strconv.Itoa(endRange),
+						Verse:      consec,
 						Similarity: avgSim / float64(runningCount),
 					}
 					newPassages = append(newPassages, newE)
 				}
 
-				// Reset consec, avgSim, and runningCount for the next passage
-				consec = ""
+				// Reset avgSim, runningCount, startRange, and endRange for the next passage
 				avgSim = 0.0
 				runningCount = 0
-				if i < len(v)-1 {
-					firstRange = v[i+1].First
-				}
+				startRange = -1
+				endRange = -1
 			}
 		}
 	}
