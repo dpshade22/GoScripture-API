@@ -209,7 +209,7 @@ func buildPassageEmbeddings(chapters map[string][]Tuple, verseMap map[string]str
 			avgSim += v[i].Second
 			runningCount++
 
-			if i < len(v)-1 && (v[i].First+1 == v[i+1].First || v[i].First+2 == v[i+1].First) {
+			if i < len(v)-1 && (v[i].First+1 == v[i+1].First || v[i].First+2 == v[i+1].First || v[i].First+3 == v[i+1].First) {
 				if runningCount == 1 {
 					firstRange = v[i].First
 				}
@@ -225,14 +225,8 @@ func buildPassageEmbeddings(chapters map[string][]Tuple, verseMap map[string]str
 						Verse:      consec + getVerse(loc, verseMap),
 						Similarity: avgSim / float64(runningCount),
 					}
-				} else {
-					newE = Embedding{
-						Location:   loc,
-						Verse:      getVerse(loc, verseMap),
-						Similarity: avgSim,
-					}
+					newPassages = append(newPassages, newE)
 				}
-				newPassages = append(newPassages, newE)
 
 				// Reset consec, avgSim, and runningCount for the next passage
 				consec = ""

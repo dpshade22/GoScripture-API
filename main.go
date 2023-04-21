@@ -22,6 +22,7 @@ func main() {
 	fmt.Println("Loading embeddings...")
 	embeddingsByChapter, embeddingsByVerse := embeddings.LoadEmbeddings("embeddingsData/chapter/KJV_Bible_Embeddings_by_Chapter.csv", "embeddingsData/verse/KJV_Bible_Embeddings.csv")
 	fmt.Println("Embeddings loaded")
+
 	fmt.Printf("Building verse map...")
 	verseMap := similarity.BuildVerseMap(embeddingsByVerse)
 	fmt.Printf("Verse map built")

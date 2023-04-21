@@ -24,7 +24,7 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 		found := similarity.FindSimilarities(query, embeddings)
 
 		if searchBy == "passage" {
-			found = similarity.FindBestPassages(found, 2, 500)
+			found = similarity.FindBestPassages(found, 2, 600)
 			found = similarity.MergePassageResults(found, verseMap)
 		} else {
 			found = found[:50]
