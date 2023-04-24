@@ -3,6 +3,7 @@ package similarity
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -32,16 +33,126 @@ var bibleBooks = []string{
 	"Revelation",
 }
 
+var alternativeBookNames = map[string]string{
+	"Psalm":   "Psalms",
+	"Pslam":   "Psalms",
+	"Pslams":  "Psalms",
+	"Gen":     "Genesis",
+	"Ex":      "Exodus",
+	"Lev":     "Leviticus",
+	"Num":     "Numbers",
+	"Deut":    "Deuteronomy",
+	"Josh":    "Joshua",
+	"Judg":    "Judges",
+	"Ruth":    "Ruth",
+	"1 Sam":   "1 Samuel",
+	"2 Sam":   "2 Samuel",
+	"1 Ki":    "1 Kings",
+	"2 Ki":    "2 Kings",
+	"1 Chr":   "1 Chronicles",
+	"2 Chr":   "2 Chronicles",
+	"1Sam":    "1 Samuel",
+	"2Sam":    "2 Samuel",
+	"1Ki":     "1 Kings",
+	"2Ki":     "2 Kings",
+	"1Chr":    "1 Chronicles",
+	"2Chr":    "2 Chronicles",
+	"Ezr":     "Ezra",
+	"Neh":     "Nehemiah",
+	"Est":     "Esther",
+	"Prov":    "Proverbs",
+	"Eccl":    "Ecclesiastes",
+	"Song":    "Song of Solomon",
+	"Isa":     "Isaiah",
+	"Jer":     "Jeremiah",
+	"Lam":     "Lamentations",
+	"Ezek":    "Ezekiel",
+	"Dan":     "Daniel",
+	"Hos":     "Hosea",
+	"Am":      "Amos",
+	"Ob":      "Obadiah",
+	"Jon":     "Jonah",
+	"Mic":     "Micah",
+	"Nah":     "Nahum",
+	"Hab":     "Habakkuk",
+	"Zeph":    "Zephaniah",
+	"Hag":     "Haggai",
+	"Zech":    "Zechariah",
+	"Mal":     "Malachi",
+	"Matt":    "Matthew",
+	"Mk":      "Mark",
+	"Lk":      "Luke",
+	"Jn":      "John",
+	"Rom":     "Romans",
+	"1 Cor":   "1 Corinthians",
+	"2 Cor":   "2 Corinthians",
+	"1Cor":    "1 Corinthians",
+	"2Cor":    "2 Corinthians",
+	"Gal":     "Galatians",
+	"Eph":     "Ephesians",
+	"Phil":    "Philippians",
+	"Col":     "Colossians",
+	"1 Thess": "1 Thessalonians",
+	"2 Thess": "2 Thessalonians",
+	"1 Tim":   "1 Timothy",
+	"2 Tim":   "2 Timothy",
+	"1Thess":  "1 Thessalonians",
+	"2Thess":  "2 Thessalonians",
+	"1Tim":    "1 Timothy",
+	"2Tim":    "2 Timothy",
+	"Tit":     "Titus",
+	"Phlm":    "Philemon",
+	"Heb":     "Hebrews",
+	"Jas":     "James",
+	"1 Pet":   "1 Peter",
+	"2 Pet":   "2 Peter",
+	"1 Jn":    "1 John",
+	"2 Jn":    "2 John",
+	"3 Jn":    "3 John",
+	"1Pet":    "1 Peter",
+	"2Pet":    "2 Peter",
+	"1Jn":     "1 John",
+	"2Jn":     "2 John",
+	"3Jn":     "3 John",
+	"Rev":     "Revelation",
+}
+
+// createBookNameMap creates a map with both original and alternative book names as keys
+func createBookNameMap() map[string]string {
+	bookNameMap := make(map[string]string)
+	for _, book := range bibleBooks {
+		bookNameMap[book] = book
+		bookNameMap[strings.ToLower(book)] = book
+	}
+	for alt, orig := range alternativeBookNames {
+		bookNameMap[alt] = orig
+		bookNameMap[strings.ToLower(alt)] = orig
+	}
+	return bookNameMap
+}
+
+var bookNameMap = createBookNameMap()
+
 // isValidBibleBook checks if the given input string contains any valid Bible book name
 func isValidBibleBook(input string) (bool, string) {
 	// Normalize the input string to lower case for case-insensitive comparison
 	normalizedInput := strings.ToLower(input)
 
+	// Sort book names in descending order of length
+	sortedBookNames := make([]string, 0, len(bookNameMap))
+	for k := range bookNameMap {
+		sortedBookNames = append(sortedBookNames, k)
+	}
+
+	sort.SliceStable(sortedBookNames, func(i, j int) bool {
+		return len(sortedBookNames[i]) > len(sortedBookNames[j])
+	})
+
 	// Iterate over the valid Bible book names and check if any of them match the input string
-	for _, bibleBook := range bibleBooks {
+	for _, bookName := range sortedBookNames {
 		// Create a regex pattern for the current Bible book name
 		// The pattern allows any number of characters between the words in the book name
-		pattern := ".*" + strings.Join(strings.Fields(strings.ToLower(bibleBook)), ".*")
+		pattern := ".*" + strings.Join(strings.Fields(bookName), ".*")
 		// Compile the regex pattern
 		re, err := regexp.Compile(pattern)
 		if err != nil {
@@ -51,7 +162,7 @@ func isValidBibleBook(input string) (bool, string) {
 
 		// Check if the input string matches the regex pattern
 		if re.MatchString(normalizedInput) {
-			return true, bibleBook
+			return true, bookNameMap[bookName]
 		}
 	}
 	return false, ""
