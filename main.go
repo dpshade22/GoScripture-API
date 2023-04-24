@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-
 	"go-scripture/pkg/api"
 	"go-scripture/pkg/embeddings"
 	"go-scripture/pkg/middleware"
 	"go-scripture/pkg/similarity"
+	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
