@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type location struct {
+type LocationStruct struct {
 	Book     string
 	Chapter  int
 	Verse    int
@@ -168,7 +168,7 @@ func isValidBibleBook(input string) (bool, string) {
 	return false, ""
 }
 
-func checkIfLocation(query string) (bool, *location) {
+func checkIfLocation(query string) (bool, *LocationStruct) {
 	// Define a regular expression pattern
 	pattern := `([\w\s]+?)(\d+)(?:[:\s-](\d+))?(?:[:\s-](\d+))?`
 	// Create a regular expression object
@@ -188,7 +188,7 @@ func checkIfLocation(query string) (bool, *location) {
 		verse, _ := strconv.Atoi(matches[3])
 		verseEnd, _ := strconv.Atoi(matches[4])
 
-		loc := &location{
+		loc := &LocationStruct{
 			Book:     bookName,
 			Chapter:  chapter,
 			Verse:    verse,

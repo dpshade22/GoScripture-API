@@ -147,7 +147,7 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 	return newPassages
 }
 
-func buildPassageFromLocation(location *location, verseMap map[string]string) Embedding {
+func buildPassageFromLocation(location *LocationStruct, verseMap map[string]string) Embedding {
 	// Create a new Embedding object
 	locString := location.Book + " " + strconv.Itoa(location.Chapter) + ":" + strconv.Itoa(location.Verse)
 	consecVerses := ""
