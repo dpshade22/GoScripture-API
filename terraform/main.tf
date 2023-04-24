@@ -15,17 +15,17 @@ resource "null_resource" "docker_build_push" {
 
   provisioner "local-exec" {
     command = <<EOT
-      docker build -t ${var.docker_hub_username}/dpshade22/go-scripture:latest .
+      docker build -t ${var.docker_hub_username}/go-scripture:latest ..
       docker login -u ${var.docker_hub_username} -p ${var.docker_hub_password}
-      docker push ${var.docker_hub_username}/dpshade22/go-scripture:latest
+      docker push ${var.docker_hub_username}/go-scripture:latest
 EOT
   }
 }
 
 # Reference the existing Google Cloud Run service
 resource "google_cloud_run_service" "api_service" {
-  name     = "<YOUR-EXISTING-CLOUD-RUN-SERVICE-NAME>"
-  location = "us-central1"
+  name     = "go-scripture"
+  location = "us-east5"
 
   template {
     spec {
@@ -41,5 +41,9 @@ resource "google_cloud_run_service" "api_service" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+
+  lifecycle {
+    ignore_changes = [template, traffic]
   }
 }

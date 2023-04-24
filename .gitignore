@@ -1,4 +1,22 @@
 embeddingsData
 .env
 .vscode
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Terraform crash log
+crash.log
+
+# Terraform override files
+*_override.tf
+*_override.tf.json
+
+# Terraform variables and secrets
+terraformGCRkey.json
 terraform.tfvars
+*.auto.tfvars
+*.tfstate.lock.info
+plan.tfplan
