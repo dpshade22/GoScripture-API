@@ -21,11 +21,11 @@ func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, e
 			embeddings = embeddingsByChapter
 		}
 
-		found := similarity.FindSimilarities(query, embeddings)
+		found := similarity.FindSimilarities(query, embeddings, verseMap, searchBy)
 
 		if searchBy == "passage" {
 			found = similarity.FindBestPassages(found, 2, 600)
-			found = similarity.MergePassageResults(found, verseMap)
+			found = similarity.MergePassageResults(found, query, verseMap)
 		} else {
 			found = found[:50]
 		}
