@@ -47,20 +47,22 @@ func handleLocationQuery(searchBy, query string, embeddings *[]Embedding) {
 	locStringChapter := ""
 	locStringVerse := ""
 
-	if loc.Verse > 0 && searchBy == "verse" {
-		locStringVerse = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
-		fmt.Print(locStringVerse, "\n")
-	} else if loc.Chapter > 0 && searchBy == "chapter" {
-		locStringChapter = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
-		fmt.Print(locStringChapter, "\n")
-	}
+	if loc != nil {
+		if loc.Verse > 0 && searchBy == "verse" {
+			locStringVerse = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
+			fmt.Print(locStringVerse, "\n")
+		} else if loc.Chapter > 0 && searchBy == "chapter" {
+			locStringChapter = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
+			fmt.Print(locStringChapter, "\n")
+		}
 
-	if hasLoc {
-		for i, embed := range *embeddings {
-			if searchBy == "chapter" && locStringChapter == embed.Location {
-				(*embeddings)[i].Similarity = 0.9999
-			} else if searchBy == "verse" && locStringVerse == embed.Location {
-				(*embeddings)[i].Similarity = 0.9999
+		if hasLoc {
+			for i, embed := range *embeddings {
+				if searchBy == "chapter" && locStringChapter == embed.Location {
+					(*embeddings)[i].Similarity = 0.9999
+				} else if searchBy == "verse" && locStringVerse == embed.Location {
+					(*embeddings)[i].Similarity = 0.9999
+				}
 			}
 		}
 	}
@@ -150,17 +152,15 @@ func buildPassageFromLocation(location *location, verseMap map[string]string) Em
 	locString := location.Book + " " + strconv.Itoa(location.Chapter) + ":" + strconv.Itoa(location.Verse)
 	consecVerses := ""
 	for i := location.Verse; i <= location.VerseEnd; i++ {
-		verseStr := strconv.Itoa(i)
-		verseStrLength := len(verseStr)
-		locWithCurrentVerse := locString[:len(locString)-verseStrLength] + verseStr
+		locWithCurrentVerse := location.Book + " " + strconv.Itoa(location.Chapter) + ":" + strconv.Itoa(i)
 		consecVerses += getVerse(locWithCurrentVerse, verseMap) + " "
 		fmt.Print("i: ", i, " ")
 		fmt.Print(locWithCurrentVerse, "\n")
 	}
 	embedding := Embedding{
 		Location:   locString + "-" + strconv.Itoa(location.VerseEnd),
-		Verse:      consecVerses,
-		Similarity: 0.9999,
+		Verse:      strings.TrimSpace(consecVerses),
+		Similarity: 0.9867,
 	}
 
 	return embedding
