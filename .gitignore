@@ -1,3 +1,4 @@
 embeddingsData
 .env
 .vscode
+terraform.tfvars
