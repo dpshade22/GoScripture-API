@@ -160,7 +160,7 @@ func buildPassageFromLocation(location *location, verseMap map[string]string) Em
 	embedding := Embedding{
 		Location:   locString + "-" + strconv.Itoa(location.VerseEnd),
 		Verse:      strings.TrimSpace(consecVerses),
-		Similarity: 0.9867,
+		Similarity: 0.9999,
 	}
 
 	return embedding
