@@ -42,7 +42,7 @@ func MergePassageResults(unmergedBestPassageResults []Embedding, query string, v
 	return buildPassageResults(chapters, query, verseMap)
 }
 
-func handleLocationQuery(searchBy, query string, embeddings *[]Embedding) {
+func handleLocationQuery(searchBy string, query string, embeddings *[]Embedding) {
 	hasLoc, loc := checkIfLocation(query)
 	locStringChapter := ""
 	locStringVerse := ""
@@ -149,13 +149,18 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 
 func buildPassageFromLocation(location *LocationStruct, verseMap map[string]string) Embedding {
 	// Create a new Embedding object
+	numberOfVerses := countVersesInChapter(location.Book, location.Chapter, verseMap)
+	if location.VerseEnd < location.Verse {
+		location.VerseEnd = location.Verse + 2
+	} else if location.VerseEnd > numberOfVerses {
+		location.VerseEnd = numberOfVerses
+	}
+
 	locString := location.Book + " " + strconv.Itoa(location.Chapter) + ":" + strconv.Itoa(location.Verse)
 	consecVerses := ""
 	for i := location.Verse; i <= location.VerseEnd; i++ {
 		locWithCurrentVerse := location.Book + " " + strconv.Itoa(location.Chapter) + ":" + strconv.Itoa(i)
 		consecVerses += getVerse(locWithCurrentVerse, verseMap) + " "
-		fmt.Print("i: ", i, " ")
-		fmt.Print(locWithCurrentVerse, "\n")
 	}
 	embedding := Embedding{
 		Location:   locString + "-" + strconv.Itoa(location.VerseEnd),
@@ -168,4 +173,18 @@ func buildPassageFromLocation(location *LocationStruct, verseMap map[string]stri
 
 func getVerse(location string, verseMap map[string]string) string {
 	return verseMap[location]
+}
+
+func countVersesInChapter(book string, chapter int, verseMap map[string]string) int {
+	verseCount := 0
+	for verse := 1; ; verse++ {
+		verseKey := fmt.Sprintf("%s %d:%d", book, chapter, verse)
+		_, exists := verseMap[verseKey]
+		if exists {
+			verseCount++
+		} else {
+			break
+		}
+	}
+	return verseCount
 }

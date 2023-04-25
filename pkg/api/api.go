@@ -11,20 +11,16 @@ import (
 type Embedding = embeddings.Embedding
 
 // Functions: handleSearch
-func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter, embeddingsByVerse []Embedding, verseMap map[string]string) {
+func HandleSearch(w http.ResponseWriter, r *http.Request, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) {
 	searchBy := r.URL.Query().Get("search_by")
 	query := r.URL.Query().Get("query")
 
 	if searchBy != "" && query != "" {
-		embeddings := embeddingsByVerse
-		if searchBy == "chapter" {
-			embeddings = embeddingsByChapter
-		}
 
-		found := similarity.FindSimilarities(query, embeddings, verseMap, searchBy)
+		found := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, searchBy)
 
 		if searchBy == "passage" {
-			found = similarity.FindBestPassages(found, 2, 600)
+			found = similarity.FindBestPassages(found, 2, 200)
 			found = similarity.MergePassageResults(found, query, verseMap)
 		} else {
 			found = found[:50]

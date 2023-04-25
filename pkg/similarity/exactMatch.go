@@ -170,7 +170,7 @@ func isValidBibleBook(input string) (bool, string) {
 
 func checkIfLocation(query string) (bool, *LocationStruct) {
 	// Define a regular expression pattern
-	pattern := `([\w\s]+?)(\d+)(?:[:\s-](\d+))?(?:[:\s-](\d+))?`
+	pattern := `([\w\s]+?)(\d+)(?:.*?(\d+))?(?:.*?(\d+))?`
 	// Create a regular expression object
 	regex := regexp.MustCompile(pattern)
 

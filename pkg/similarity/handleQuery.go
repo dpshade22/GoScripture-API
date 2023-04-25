@@ -3,51 +3,78 @@ package similarity
 import (
 	"context"
 	"fmt"
-	"go-scripture/pkg/embeddings"
+	"go-scripture/pkg/embeddings" // package for working with Bible verse embeddings
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/joho/godotenv"
-	"github.com/sashabaranov/go-openai"
+	"github.com/joho/godotenv"          // package for working with environment variables
+	"github.com/sashabaranov/go-openai" // package for working with OpenAI API
 )
 
-type Embedding = embeddings.Embedding
+type Embedding = embeddings.Embedding // define an alias for Embedding struct from embeddings package
 type Tuple struct {
 	First  int
 	Second float64
 }
 
-func FindSimilarities(query string, embeddings []Embedding, verseMap map[string]string, searchBy string) []Embedding {
-	godotenv.Load()
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	client := openai.NewClient(apiKey)
-	fmt.Printf("API key: %s\n", apiKey)
-
-	request := openai.EmbeddingRequest{
-		Input: []string{query},
-		Model: openai.AdaEmbeddingV2,
-	}
-	fmt.Println(request)
-
-	resp, err := client.CreateEmbeddings(context.Background(), request)
-	if err != nil {
-		fmt.Printf("Error creating embeddings: %s", err)
-		panic(err)
+func FindSimilarities(query string, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string, searchBy string) []Embedding {
+	embeddings := embeddingsByVerse
+	if searchBy == "chapter" {
+		embeddings = embeddingsByChapter
 	}
 
-	searchTermVector32 := resp.Data[0].Embedding
-	searchTermVector := make([]float64, len(searchTermVector32))
-	for i, v := range searchTermVector32 {
-		searchTermVector[i] = float64(v)
+	// create a vector representation of the query using pre-trained embeddings
+	// or using the embeddings of the verse location in the query
+	searchTermVector := make([]float64, len(embeddingsByVerse[0].Embedding))
+	hasLoc, loc := checkIfLocation(query)
+	foundLocalEmbedding := false
+	if hasLoc {
+		switch searchBy {
+		case "verse":
+			foundLocalEmbedding, searchTermVector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter)+":"+strconv.Itoa(loc.Verse), embeddingsByVerse)
+		case "chapter":
+			foundLocalEmbedding, searchTermVector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter), embeddingsByChapter)
+		}
+	}
+
+	if !foundLocalEmbedding {
+		// use OpenAI API to get the embeddings for the query
+		// load API key from environment variable
+		// swap query for passage if it is a valid Bible passage
+		// create an embedding request using the query and pre-trained embeddings model
+		// get the embeddings for the query from the OpenAI API response
+
+		godotenv.Load()
+		apiKey := os.Getenv("OPENAI_API_KEY")
+		client := openai.NewClient(apiKey)
+		fmt.Printf("API key: %s\n", apiKey)
+
+		query = swapQueryForPassage(query, verseMap)
+
+		request := openai.EmbeddingRequest{
+			Input: []string{query},
+			Model: openai.AdaEmbeddingV2,
+		}
+		fmt.Println(request)
+
+		resp, err := client.CreateEmbeddings(context.Background(), request)
+		if err != nil {
+			fmt.Printf("Error creating embeddings: %s", err)
+			panic(err)
+		}
+
+		searchTermVector32 := resp.Data[0].Embedding
+		for i, v := range searchTermVector32 {
+			searchTermVector[i] = float64(v)
+		}
 	}
 
 	numWorkers := 8
 	jobs := make(chan int, len(embeddings))
 	results := make(chan Embedding, len(embeddings))
-
-	// Start worker pool
 	var wg sync.WaitGroup
 	for w := 0; w < numWorkers; w++ {
 		wg.Add(1)
@@ -59,23 +86,15 @@ func FindSimilarities(query string, embeddings []Embedding, verseMap map[string]
 			wg.Done()
 		}()
 	}
-
-	// Send jobs
 	for i := range embeddings {
 		jobs <- i
 	}
 	close(jobs)
-
 	wg.Wait()
 	close(results)
 
-	// Receive results
-	for i := 0; i < len(embeddings); i++ {
-		embeddings[i] = <-results
-	}
-
+	// sort the embeddings by similarity score in descending order
 	handleLocationQuery(searchBy, query, &embeddings)
-
 	sort.Slice(embeddings, func(i, j int) bool {
 		return embeddings[i].Similarity > embeddings[j].Similarity
 	})
@@ -142,4 +161,30 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 	})
 
 	return bestSequences
+}
+
+func swapQueryForPassage(query string, verseMap map[string]string) string {
+	fmt.Print("User Input: " + query + "\n")
+	// Check if the query is a valid Bible verse, passage, or chapter
+	hasLoc, loc := checkIfLocation(query)
+	newVerseQuery := ""
+
+	if hasLoc {
+		if loc.VerseEnd > 0 && loc.VerseEnd > loc.Verse {
+			newVerseQuery = buildPassageFromLocation(loc, verseMap).Verse
+			fmt.Print("New Query: " + newVerseQuery + "\n")
+			return newVerseQuery
+		}
+	}
+	return query
+}
+
+func getEmbeddingByLocation(location string, embeddings []Embedding) (bool, []float64) {
+	for _, embedding := range embeddings {
+		if embedding.Location == location {
+			fmt.Print("FOUND EMBEDDING: " + embedding.Location + "\n")
+			return true, embedding.Embedding
+		}
+	}
+	return false, []float64{}
 }
