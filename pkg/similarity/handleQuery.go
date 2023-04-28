@@ -17,6 +17,7 @@ import (
 type Embedding = embeddings.Embedding
 type LocationStruct struct {
 	HasLocation bool
+    LocationString string
 	Location    string
 	Book        string
 	Chapter     int
@@ -79,13 +80,10 @@ func getSearchVector(query string, loc LocationStruct, embeddingsByChapter []Emb
 	vector := make([]float64, len(embeddingsByVerse[0].Embedding))
 	foundLocalEmbedding := false
 	if loc.HasLocation {
-		switch searchBy {
-		case "verse":
-			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter)+":"+strconv.Itoa(loc.Verse), embeddingsByVerse)
-		case "passage":
-			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter)+":"+strconv.Itoa(loc.Verse)+"-"+strconv.Itoa(loc.VerseEnd), embeddingsByVerse)
-		case "chapter":
-			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter), embeddingsByChapter)
+        if searchBy == "chapter" {
+			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByChapter)
+        } else {
+			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByVerse)
 		}
 	}
 	if !foundLocalEmbedding {
@@ -138,65 +136,4 @@ func getEmbeddingByLocation(location string, embeddings []Embedding) (bool, []fl
 		}
 	}
 	return false, []float64{}
-}
-
-func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
-	// Sort the verses list by Location and Verse.
-	sort.Slice(verses, func(i, j int) bool {
-		if verses[i].Location == verses[j].Location {
-			return verses[i].Verse < verses[j].Verse
-		}
-		return verses[i].Location < verses[j].Location
-	})
-
-	var bestSequences []Embedding
-	for i := 0; i < numSequences; i++ {
-		// Iterate over the verses list using a sliding window of size `windowSize`.
-		bestWindow := make([]Embedding, windowSize)
-		bestScore := 0.0
-
-		for j := i; j <= len(verses)-windowSize && j >= 0; j += numSequences {
-			window := verses[j : j+windowSize]
-			// Calculate the average similarity score for all Embedding structs in the window.
-			sumScore := 0.0
-			for _, e := range window {
-				sumScore += e.Similarity
-			}
-			avgScore := sumScore / float64(windowSize)
-
-			// Update the best window, score, and start index if a higher score is found.
-			if avgScore > bestScore {
-				copy(bestWindow, window)
-				bestScore = avgScore
-			}
-		}
-
-		// Extract book and chapter from the Location field of the first verse in the best window.
-		bookAndChapter := bestWindow[0].Location[:strings.LastIndex(bestWindow[0].Location, ":")]
-		verseStart := bestWindow[0].Location[strings.LastIndex(bestWindow[0].Location, ":")+1:]
-		verseEnd := bestWindow[len(bestWindow)-1].Location[strings.LastIndex(bestWindow[len(bestWindow)-1].Location, ":")+1:]
-		bestLocation := fmt.Sprintf("%s:%s-%s", bookAndChapter, verseStart, verseEnd)
-
-		// Concatenate verses in the best window.
-		var bestVerse strings.Builder
-		for _, e := range bestWindow {
-			if bestVerse.Len() > 0 {
-				bestVerse.WriteString(" ")
-			}
-			verseNum := e.Location[strings.LastIndex(e.Location, ":")+1:]
-			verseStr := verseNum + " " + e.Verse
-
-			bestVerse.WriteString(verseStr)
-		}
-
-		// Append the best sequence to the list of best sequences.
-		bestSequences = append(bestSequences, Embedding{Location: bestLocation, Verse: bestVerse.String(), Similarity: bestScore})
-	}
-
-	// Sort bestSequences by Similarity in descending order.
-	sort.Slice(bestSequences, func(i, j int) bool {
-		return bestSequences[i].Similarity > bestSequences[j].Similarity
-	})
-
-	return bestSequences
 }

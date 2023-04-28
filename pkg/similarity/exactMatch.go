@@ -162,44 +162,57 @@ func isValidBibleBook(input string) (bool, string) {
 }
 
 func checkIfLocation(query string) LocationStruct {
-	loc := LocationStruct{
-		HasLocation: false,
-		Book:        "",
-		Chapter:     0,
-		Verse:       0,
-		VerseEnd:    0,
-	}
-	// Define a regular expression pattern
-	pattern := `([\w\s]+?)(\d+)(?:.*?(\d+))?(?:.*?(\d+))?`
-	// Create a regular expression object
-	regex := regexp.MustCompile(pattern)
+    loc := LocationStruct{
+        HasLocation: false,
+        LocationString: "",
+        Book:        "",
+        Chapter:     0,
+        Verse:       0,
+        VerseEnd:    0,
+    }
+    // Define a regular expression pattern
+    pattern := `([\w\s]+?)(\d+)(?:.*?(\d+))?(?:.*?(\d+))?`
+    // Create a regular expression object
+    regex := regexp.MustCompile(pattern)
 
-	// Test if a string matches the pattern
-	matches := regex.FindStringSubmatch(query)
+    // Test if a string matches the pattern
+    matches := regex.FindStringSubmatch(query)
 
-	if len(matches) > 0 {
-		hasBook, bookName := isValidBibleBook(matches[1])
+    if len(matches) > 0 {
+        hasBook, bookName := isValidBibleBook(matches[1])
 
-		if !hasBook {
-			return loc
-		}
+        if !hasBook {
+            return loc
+        }
 
-		chapter, _ := strconv.Atoi(matches[2])
-		verse, _ := strconv.Atoi(matches[3])
-		verseEnd, _ := strconv.Atoi(matches[4])
+        chapter, _ := strconv.Atoi(matches[2])
+        verse, _ := strconv.Atoi(matches[3])
+        verseEnd, _ := strconv.Atoi(matches[4])
 
-		loc := LocationStruct{
-			HasLocation: true,
-			Book:        bookName,
-			Chapter:     chapter,
-			Verse:       verse,
-			VerseEnd:    verseEnd,
-		}
-		return loc
-	}
+        // Determine the location string based on how many matches were found
+        var locationStr string
+        if verseEnd != 0 {
+            locationStr = fmt.Sprintf("%s %d:%d-%d", bookName, chapter, verse, verseEnd)
+        } else if verse != 0 {
+            locationStr = fmt.Sprintf("%s %d:%d", bookName, chapter, verse)
+        } else {
+            locationStr = fmt.Sprintf("%s %d", bookName, chapter)
+        }
 
-	return loc
+        loc := LocationStruct{
+            HasLocation: true,
+            LocationString: locationStr,
+            Book:        bookName,
+            Chapter:     chapter,
+            Verse:       verse,
+            VerseEnd:    verseEnd
+        }
+        return loc
+    }
+
+    return loc
 }
+
 
 func updateExactMatchSimilarity(searchBy string, loc LocationStruct, embeddings *[]Embedding) {
 	locStringChapter := ""
