@@ -8,12 +8,7 @@ import (
 	"strings"
 )
 
-type LocationStruct struct {
-	Book     string
-	Chapter  int
-	Verse    int
-	VerseEnd int
-}
+
 
 // List of valid Bible book names
 var bibleBooks = []string{
@@ -189,13 +184,36 @@ func checkIfLocation(query string) (bool, *LocationStruct) {
 		verseEnd, _ := strconv.Atoi(matches[4])
 
 		loc := &LocationStruct{
+			HasLocation: true,
 			Book:     bookName,
 			Chapter:  chapter,
 			Verse:    verse,
 			VerseEnd: verseEnd,
 		}
-		return true, loc
+		return loc
 	}
 
 	return false, nil
+}
+
+
+func updateExactMatchSimilarity(searchBy string, loc LocationStruct, embeddings *[]Embedding) {
+	locStringChapter := ""
+	locStringVerse := ""
+
+	if loc.Verse > 0 && searchBy == "verse" {
+		locStringVerse = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
+		fmt.Print(locStringVerse, "\n")
+	} else if loc.Chapter > 0 && searchBy == "chapter" {
+		locStringChapter = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
+		fmt.Print(locStringChapter, "\n")
+	}
+
+	for i, embed := range *embeddings {
+		if searchBy == "chapter" && locStringChapter == embed.Location {
+			(*embeddings)[i].Similarity = 0.9999
+		} else if searchBy == "verse" && locStringVerse == embed.Location {
+			(*embeddings)[i].Similarity = 0.9999
+		}
+	}
 }

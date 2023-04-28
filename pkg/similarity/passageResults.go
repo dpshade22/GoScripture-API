@@ -42,32 +42,6 @@ func MergePassageResults(unmergedBestPassageResults []Embedding, query string, v
 	return buildPassageResults(chapters, query, verseMap)
 }
 
-func handleLocationQuery(searchBy string, query string, embeddings *[]Embedding) {
-	hasLoc, loc := checkIfLocation(query)
-	locStringChapter := ""
-	locStringVerse := ""
-
-	if loc != nil {
-		if loc.Verse > 0 && searchBy == "verse" {
-			locStringVerse = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
-			fmt.Print(locStringVerse, "\n")
-		} else if loc.Chapter > 0 && searchBy == "chapter" {
-			locStringChapter = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
-			fmt.Print(locStringChapter, "\n")
-		}
-
-		if hasLoc {
-			for i, embed := range *embeddings {
-				if searchBy == "chapter" && locStringChapter == embed.Location {
-					(*embeddings)[i].Similarity = 0.9999
-				} else if searchBy == "verse" && locStringVerse == embed.Location {
-					(*embeddings)[i].Similarity = 0.9999
-				}
-			}
-		}
-	}
-}
-
 func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map[string]string) []Embedding {
 	newPassages := make([]Embedding, 0)
 

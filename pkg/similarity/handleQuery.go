@@ -15,19 +15,30 @@ import (
 )
 
 type Embedding = embeddings.Embedding
+type LocationStruct struct {
+    HasLocation bool
+    Location string
+	Book     string
+	Chapter  int
+	Verse    int
+	VerseEnd int
+}
 type Tuple struct {
     First  int
     Second float64
 }
 
 func FindSimilarities(query string, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string, searchBy string) []Embedding {
-    embeddings := embeddingsByVerse
+    bibleEmbeddings := embeddingsByVerse
+    loc := checkIfLocation(query)
     if searchBy == "chapter" {
-        embeddings = embeddingsByChapter
+        bibleEmbeddings = embeddingsByChapter
     }
-    searchTermVector := getSearchVector(query, embeddingsByVerse, searchBy, verseMap)
-	embeddings = calculateEmbeddingSimilarity(embeddings, searchTermVector)
-    handleLocationQuery(searchBy, query, &embeddings)
+    searchTermVector := getSearchVector(query, loc, bibleEmbeddings, verseMap, searchBy)
+    embeddings = calculateEmbeddingSimilarity(embeddings, searchTermVector)
+    if loc.HasLocation {
+        updateExactMatchSimilarity(searchBy, loc, &embeddings)
+    }
     sort.Slice(embeddings, func(i, j int) bool {
         return embeddings[i].Similarity > embeddings[j].Similarity
     })
@@ -58,11 +69,10 @@ func calculateEmbeddingSimilarity(embeddings []Embedding, searchTermVector []flo
     return embeddings
 }
 
-func getSearchVector(query string, embeddingsByVerse []Embedding, searchBy string, verseMap map[string]string) []float64 {
+func getSearchVector(query string, loc LocationStruct, embeddingsByVerse []Embedding, searchBy string, verseMap map[string]string) []float64 {
     vector := make([]float64, len(embeddingsByVerse[0].Embedding))
-    hasLoc, loc := checkIfLocation(query)
     foundLocalEmbedding := false
-    if hasLoc {
+    if loc.HasLocation {
         switch searchBy {
         case "verse":
             foundLocalEmbedding, vector = getEmbeddingByLocation(loc.Book+" "+strconv.Itoa(loc.Chapter)+":"+strconv.Itoa(loc.Verse), embeddingsByVerse)
