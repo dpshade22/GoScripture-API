@@ -93,9 +93,9 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 		}
 	}
 
-	hasLoc, loc := checkIfLocation(query)
+	loc := checkIfLocation(query)
 	locStringPassage := ""
-	if hasLoc {
+	if loc.HasLocation {
 		locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
 		fmt.Print("Has location\n")
 		fmt.Print("Found passage\n")
@@ -121,7 +121,7 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 	return newPassages
 }
 
-func buildPassageFromLocation(location *LocationStruct, verseMap map[string]string) Embedding {
+func buildPassageFromLocation(location LocationStruct, verseMap map[string]string) Embedding {
 	// Create a new Embedding object
 	numberOfVerses := countVersesInChapter(location.Book, location.Chapter, verseMap)
 	if location.VerseEnd < location.Verse {

@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-
-
 // List of valid Bible book names
 var bibleBooks = []string{
 	"1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra",
@@ -163,7 +161,14 @@ func isValidBibleBook(input string) (bool, string) {
 	return false, ""
 }
 
-func checkIfLocation(query string) (bool, *LocationStruct) {
+func checkIfLocation(query string) LocationStruct {
+	loc := LocationStruct{
+		HasLocation: false,
+		Book:        "",
+		Chapter:     0,
+		Verse:       0,
+		VerseEnd:    0,
+	}
 	// Define a regular expression pattern
 	pattern := `([\w\s]+?)(\d+)(?:.*?(\d+))?(?:.*?(\d+))?`
 	// Create a regular expression object
@@ -176,26 +181,25 @@ func checkIfLocation(query string) (bool, *LocationStruct) {
 		hasBook, bookName := isValidBibleBook(matches[1])
 
 		if !hasBook {
-			return false, nil
+			return loc
 		}
 
 		chapter, _ := strconv.Atoi(matches[2])
 		verse, _ := strconv.Atoi(matches[3])
 		verseEnd, _ := strconv.Atoi(matches[4])
 
-		loc := &LocationStruct{
+		loc := LocationStruct{
 			HasLocation: true,
-			Book:     bookName,
-			Chapter:  chapter,
-			Verse:    verse,
-			VerseEnd: verseEnd,
+			Book:        bookName,
+			Chapter:     chapter,
+			Verse:       verse,
+			VerseEnd:    verseEnd,
 		}
 		return loc
 	}
 
-	return false, nil
+	return loc
 }
-
 
 func updateExactMatchSimilarity(searchBy string, loc LocationStruct, embeddings *[]Embedding) {
 	locStringChapter := ""
