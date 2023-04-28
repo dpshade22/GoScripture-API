@@ -32,21 +32,20 @@ func main() {
 	}).Methods("GET")
 
 	router.HandleFunc("/search/verse", func(w http.ResponseWriter, r *http.Request) {
-		api.HandleSearchByVerse(w, r, embeddingsByVerse)
+		api.HandleSearchByVerse(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}", "verse", "{verse}")
-	
+
 	router.HandleFunc("/search/chapter", func(w http.ResponseWriter, r *http.Request) {
-		api.HandleSearchByChapter(w, r, embeddingsByChapter)
+		api.HandleSearchByChapter(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}")
-	
+
 	router.HandleFunc("/search/passage", func(w http.ResponseWriter, r *http.Request) {
 		api.HandleSearchByPassage(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}", "verse", "{verse}", "verse_end", "{verse_end}")
-	
+
 	router.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
 		api.HandleQuery(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}).Methods("GET").Queries("search_by", "{search_by}", "query", "{query}")
-	
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},

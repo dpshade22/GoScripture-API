@@ -14,13 +14,14 @@ type Embedding = embeddings.Embedding
 
 // Functions: handleSearch
 
-func HandleSearchByVerse(w http.ResponseWriter, r *http.Request, embeddingsByVerse []Embedding) {
+func HandleSearchByVerse(w http.ResponseWriter, r *http.Request, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) {
 	vars := mux.Vars(r)
 	book := vars["book"]
 	chapter := vars["chapter"]
 	verse := vars["verse"]
+	locationQuery := fmt.Sprintf("%s %s:%s", book, chapter, verse)
 
-	found := similarity.FindSimilarities(fmt.Sprintf("%s %s:%s", book, chapter, verse), nil, embeddingsByVerse, nil, "text")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "verse")
 
 	jsonArray := make([]map[string]interface{}, len(found))
 	for i, e := range found {
@@ -32,16 +33,17 @@ func HandleSearchByVerse(w http.ResponseWriter, r *http.Request, embeddingsByVer
 		}
 	}
 
-	fmt.Printf("Search by verse: %s %s:%s", book, chapter, verse)
+	fmt.Printf("Search by verse: %s", locationQuery)
 	json.NewEncoder(w).Encode(jsonArray)
 }
 
-func HandleSearchByChapter(w http.ResponseWriter, r *http.Request, embeddingsByChapter []Embedding) {
+func HandleSearchByChapter(w http.ResponseWriter, r *http.Request, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) {
 	vars := mux.Vars(r)
 	book := vars["book"]
 	chapter := vars["chapter"]
+	locationQuery := fmt.Sprintf("%s %s", book, chapter)
 
-	found := similarity.FindSimilarities(fmt.Sprintf("%s %s", book, chapter), embeddingsByChapter, nil, nil, "chapter")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter")
 
 	jsonArray := make([]map[string]interface{}, len(found))
 	for i, e := range found {
@@ -53,7 +55,7 @@ func HandleSearchByChapter(w http.ResponseWriter, r *http.Request, embeddingsByC
 		}
 	}
 
-	fmt.Printf("Search by chapter: %s %s", book, chapter)
+	fmt.Printf("Search by chapter: %s", locationQuery)
 	json.NewEncoder(w).Encode(jsonArray)
 }
 
@@ -63,11 +65,11 @@ func HandleSearchByPassage(w http.ResponseWriter, r *http.Request, embeddingsByC
 	chapter := vars["chapter"]
 	verseStart := vars["verse"]
 	verseEnd := vars["verse_end"]
-	query := fmt.Sprintf("%s %s:%s-%s", book, chapter, verseStart, verseEnd)
+	locationQuery := fmt.Sprintf("%s %s:%s-%s", book, chapter, verseStart, verseEnd)
 
-	found := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "passage")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "passage")
 	found = similarity.FindBestPassages(found, 2, 200)
-	found = similarity.MergePassageResults(found, query, verseMap)
+	found = similarity.MergePassageResults(found, locationQuery, verseMap)
 
 	jsonArray := make([]map[string]interface{}, len(found))
 	for i, e := range found {
@@ -79,7 +81,7 @@ func HandleSearchByPassage(w http.ResponseWriter, r *http.Request, embeddingsByC
 		}
 	}
 
-	fmt.Printf("Search by passage: %s", query)
+	fmt.Printf("Search by passage: %s", locationQuery)
 	json.NewEncoder(w).Encode(jsonArray)
 }
 
