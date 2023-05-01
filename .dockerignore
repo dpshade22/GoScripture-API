@@ -1,2 +1,9 @@
 .env
 .vscode
+.git/
+.terraform/
+
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+*.tfplan

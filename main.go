@@ -26,26 +26,35 @@ func main() {
 	fmt.Printf("Building verse map...\n")
 	verseMap := similarity.BuildVerseMap(embeddingsByVerse)
 	fmt.Printf("Verse map built\n")
-	// fmt.Println(verseMap)
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"message": "Hello World"})
 	}).Methods("GET")
 
-	router.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		api.HandleSearch(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
-	}).Methods("GET")
+	router.HandleFunc("/search/verse", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleSearchByVerse(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
+	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}", "verse", "{verse}")
 
-	// Create a new CORS handler with the desired configuration
+	router.HandleFunc("/search/chapter", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleSearchByChapter(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
+	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}")
+
+	router.HandleFunc("/search/passage", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleSearchByPassage(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
+	}).Methods("GET").Queries("book", "{book}", "chapter", "{chapter}", "verse", "{verse}", "verse_end", "{verse_end}")
+
+	router.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		api.HandleQuery(w, r, embeddingsByChapter, embeddingsByVerse, verseMap)
+	}).Methods("GET").Queries("search_by", "{search_by}", "query", "{query}")
+
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},   // Replace "*" with your desired origin(s) to restrict access
-		AllowedMethods:   []string{"GET"}, // Adjust the allowed HTTP methods as needed
-		AllowedHeaders:   []string{"*"},   // Allow all headers or specify a list
-		AllowCredentials: true,            // Set to true if you want to allow credentials (cookies, etc.)
-		Debug:            false,           // Set to true for debug information
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+		Debug:            false,
 	})
 
-	// Wrap your router with the CORS handler
 	handler := corsHandler.Handler(router)
 
 	fmt.Println("Server running on http://0.0.0.0:8080")
