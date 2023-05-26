@@ -6,8 +6,6 @@ import (
 	"go-scripture/pkg/embeddings"
 	"os"
 	"sort"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/joho/godotenv"
@@ -16,13 +14,13 @@ import (
 
 type Embedding = embeddings.Embedding
 type LocationStruct struct {
-	HasLocation bool
-    LocationString string
-	Location    string
-	Book        string
-	Chapter     int
-	Verse       int
-	VerseEnd    int
+	HasLocation    bool
+	LocationString string
+	Location       string
+	Book           string
+	Chapter        int
+	Verse          int
+	VerseEnd       int
 }
 type Tuple struct {
 	First  int
@@ -80,9 +78,9 @@ func getSearchVector(query string, loc LocationStruct, embeddingsByChapter []Emb
 	vector := make([]float64, len(embeddingsByVerse[0].Embedding))
 	foundLocalEmbedding := false
 	if loc.HasLocation {
-        if searchBy == "chapter" {
+		if searchBy == "chapter" {
 			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByChapter)
-        } else {
+		} else {
 			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByVerse)
 		}
 	}
