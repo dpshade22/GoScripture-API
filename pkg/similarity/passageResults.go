@@ -11,12 +11,12 @@ import (
 func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
 	if len(verses) == 0 {
 		fmt.Println("Error: no verses provided")
-		return nil // or however you want to handle this
+		return nil
 	}
 
 	if windowSize <= 0 || numSequences <= 0 {
 		fmt.Println("Error: windowSize and numSequences must be greater than zero")
-		return nil // or however you want to handle this
+		return nil
 	}
 
 	// Sort the verses list by Location and Verse.
@@ -48,6 +48,7 @@ func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Em
 				bestScore = avgScore
 			}
 		}
+		fmt.Println("Debug: bestWindow[0].Location:", bestWindow[0].Location)
 
 		// Extract book and chapter from the Location field of the first verse in the best window.
 		bookAndChapter := bestWindow[0].Location[:strings.LastIndex(bestWindow[0].Location, ":")]
@@ -115,6 +116,7 @@ func MergePassageResults(unmergedBestPassageResults []Embedding, query string, v
 
 func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map[string]string) []Embedding {
 	newPassages := make([]Embedding, 0)
+	fmt.Println("Debug: Initial chapters in buildPassageResults:", chapters)
 
 	for k, v := range chapters {
 		sort.Slice(v, func(i, j int) bool {
@@ -152,6 +154,8 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 						Verse:      consec,
 						Similarity: avgSim / float64(runningCount),
 					}
+					fmt.Println("Debug: New Embedding in buildPassageResults:", newE)
+
 					newPassages = append(newPassages, newE)
 				}
 
@@ -167,7 +171,20 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 	loc := checkIfLocation(query)
 	locStringPassage := ""
 	if loc.HasLocation {
-		locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
+
+		// Check if loc.Verse and loc.VerseEnd are populated
+		if loc.Verse > 0 && loc.VerseEnd > 0 {
+			locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
+		} else if loc.Verse > 0 {
+			// If only loc.Verse is populated
+			locStringPassage = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
+		} else if loc.VerseEnd > 0 {
+			// If only loc.VerseEnd is populated
+			locStringPassage = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.VerseEnd)
+		} else {
+			// If neither loc.Verse nor loc.VerseEnd is populated, just use the chapter
+			locStringPassage = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
+		}
 		fmt.Print("Has location\n")
 		fmt.Print("Found passage\n")
 		fmt.Print("Location: ", locStringPassage, "\n")
@@ -188,6 +205,7 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 	sort.Slice(newPassages, func(i, j int) bool {
 		return newPassages[i].Similarity > newPassages[j].Similarity
 	})
+	fmt.Println("Debug: Final newPassages in buildPassageResults:", newPassages)
 
 	return newPassages
 }

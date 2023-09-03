@@ -128,9 +128,6 @@ func HandleSearchAll(c echo.Context, embeddingsByChapter []Embedding, embeddings
 	chapterFoundCh := make(chan []Embedding)
 	passageFoundCh := make(chan []Embedding)
 
-	// Timer Start
-	start := time.Now()
-
 	wg.Add(3)
 
 	go func() {
@@ -171,13 +168,12 @@ func HandleSearchAll(c echo.Context, embeddingsByChapter []Embedding, embeddings
 	passageFound := <-passageFoundCh
 
 	// Combine all results and sort them by similarity
-	combineStart := time.Now()
+
 	allFound := append(verseFound, append(chapterFound, passageFound...)...)
 	sort.Slice(allFound, func(i, j int) bool {
 		return allFound[i].Similarity > allFound[j].Similarity
 	})
 	allFound = allFound[:50]
-	fmt.Printf("Combining and sorting took: %s\n", time.Since(combineStart))
 
 	var searchResults []SearchOutput
 	for i, e := range allFound {
@@ -188,9 +184,6 @@ func HandleSearchAll(c echo.Context, embeddingsByChapter []Embedding, embeddings
 			Similarities: e.Similarity,
 		})
 	}
-
-	// Timer End
-	fmt.Printf("Total time for Search All: %s\n", time.Since(start))
 
 	fmt.Printf("Search All by: %s\n", query)
 	return c.JSON(http.StatusOK, searchResults)
