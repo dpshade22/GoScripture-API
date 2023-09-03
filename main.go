@@ -46,6 +46,10 @@ func main() {
 		return api.HandleQuery(c, embeddingsByChapter, embeddingsByVerse, verseMap)
 	})
 
+	e.GET("/search/all", func(c echo.Context) error {
+		return api.HandleSearchAll(c, embeddingsByChapter, embeddingsByVerse, verseMap)
+	})
+
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{http.MethodGet},

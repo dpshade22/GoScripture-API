@@ -5,6 +5,9 @@ import (
 	"go-scripture/pkg/embeddings"
 	"go-scripture/pkg/similarity"
 	"net/http"
+	"sort"
+	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -114,5 +117,81 @@ func HandleQuery(c echo.Context, embeddingsByChapter []Embedding, embeddingsByVe
 	}
 
 	fmt.Printf("Search by: %s, Query: %s\n", searchBy, query)
+	return c.JSON(http.StatusOK, searchResults)
+}
+
+func HandleSearchAll(c echo.Context, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) error {
+	query := c.QueryParam("query")
+
+	var wg sync.WaitGroup
+	verseFoundCh := make(chan []Embedding)
+	chapterFoundCh := make(chan []Embedding)
+	passageFoundCh := make(chan []Embedding)
+
+	// Timer Start
+	start := time.Now()
+
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		verseStart := time.Now()
+		verseFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "verse")
+		fmt.Printf("Search by Verse took: %s\n", time.Since(verseStart))
+		verseFoundCh <- verseFound
+	}()
+
+	go func() {
+		defer wg.Done()
+		chapterStart := time.Now()
+		chapterFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter")
+		fmt.Printf("Search by Chapter took: %s\n", time.Since(chapterStart))
+		chapterFoundCh <- chapterFound
+	}()
+
+	go func() {
+		defer wg.Done()
+		passageStart := time.Now()
+		passageFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "passage")
+		passageFound = similarity.FindBestPassages(passageFound, 2, 200)
+		passageFound = similarity.MergePassageResults(passageFound, query, verseMap)
+		fmt.Printf("Search by Passage took: %s\n", time.Since(passageStart))
+		passageFoundCh <- passageFound
+	}()
+
+	go func() {
+		wg.Wait()
+		close(verseFoundCh)
+		close(chapterFoundCh)
+		close(passageFoundCh)
+	}()
+
+	verseFound := <-verseFoundCh
+	chapterFound := <-chapterFoundCh
+	passageFound := <-passageFoundCh
+
+	// Combine all results and sort them by similarity
+	combineStart := time.Now()
+	allFound := append(verseFound, append(chapterFound, passageFound...)...)
+	sort.Slice(allFound, func(i, j int) bool {
+		return allFound[i].Similarity > allFound[j].Similarity
+	})
+	allFound = allFound[:50]
+	fmt.Printf("Combining and sorting took: %s\n", time.Since(combineStart))
+
+	var searchResults []SearchOutput
+	for i, e := range allFound {
+		searchResults = append(searchResults, SearchOutput{
+			Index:        i,
+			Location:     e.Location,
+			Verse:        e.Verse,
+			Similarities: e.Similarity,
+		})
+	}
+
+	// Timer End
+	fmt.Printf("Total time for Search All: %s\n", time.Since(start))
+
+	fmt.Printf("Search All by: %s\n", query)
 	return c.JSON(http.StatusOK, searchResults)
 }

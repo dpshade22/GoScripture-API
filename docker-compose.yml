@@ -1,0 +1,6 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dpshade22/go-scripture:latest

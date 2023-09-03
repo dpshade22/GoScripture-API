@@ -1,6 +1,7 @@
 embeddingsData
 .env
 .vscode
+.DS_Store
 
 # Terraform
 .terraform/

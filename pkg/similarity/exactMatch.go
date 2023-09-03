@@ -216,19 +216,39 @@ func checkIfLocation(query string) LocationStruct {
 func updateExactMatchSimilarity(searchBy string, loc LocationStruct, embeddings *[]Embedding) {
 	locStringChapter := ""
 	locStringVerse := ""
+	locStringPassage := ""
 
-	if loc.Verse > 0 && searchBy == "verse" {
+	// Define regex patterns for identifying query types
+	versePattern := regexp.MustCompile(`\w+\s+\d+:\d+$`)
+	chapterPattern := regexp.MustCompile(`\w+\s+\d+$`)
+	passagePattern := regexp.MustCompile(`\w+\s+\d+:\d+-\d+$`)
+
+	// Identify the type of query based on priority
+	var queryType string
+	if passagePattern.MatchString(searchBy) {
+		queryType = "passage"
+	} else if versePattern.MatchString(searchBy) {
+		queryType = "verse"
+	} else if chapterPattern.MatchString(searchBy) {
+		queryType = "chapter"
+	} else {
+		queryType = "unknown"
+	}
+
+	if loc.Verse > 0 && loc.VerseEnd > 0 {
+		locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
+	} else if loc.Verse > 0 {
 		locStringVerse = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
-		fmt.Print(locStringVerse, "\n")
-	} else if loc.Chapter > 0 && searchBy == "chapter" {
+	} else if loc.Chapter > 0 {
 		locStringChapter = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
-		fmt.Print(locStringChapter, "\n")
 	}
 
 	for i, embed := range *embeddings {
-		if searchBy == "chapter" && locStringChapter == embed.Location {
+		if queryType == "chapter" && locStringChapter == embed.Location {
 			(*embeddings)[i].Similarity = 0.9999
-		} else if searchBy == "verse" && locStringVerse == embed.Location {
+		} else if queryType == "verse" && locStringVerse == embed.Location {
+			(*embeddings)[i].Similarity = 0.9999
+		} else if queryType == "passage" && locStringPassage == embed.Location {
 			(*embeddings)[i].Similarity = 0.9999
 		}
 	}
