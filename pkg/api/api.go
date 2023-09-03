@@ -6,14 +6,26 @@ import (
 	"go-scripture/pkg/similarity"
 	"net/http"
 	"sort"
-	"sync"
-	"time"
 
 	"github.com/labstack/echo/v4"
 )
 
 type Embedding = embeddings.Embedding
 
+type LocationStruct struct {
+	HasLocation    bool
+	LocationString string
+	Location       string
+	Book           string
+	Chapter        int
+	Verse          int
+	VerseEnd       int
+}
+
+type Tuple struct {
+	First  int
+	Second float64
+}
 type SearchOutput struct {
 	Index        int     `json:"index"`
 	Location     string  `json:"location"`
@@ -27,7 +39,7 @@ func HandleSearchByVerse(c echo.Context, embeddingsByChapter []Embedding, embedd
 	verse := c.QueryParam("verse")
 	locationQuery := fmt.Sprintf("%s %s:%s", book, chapter, verse)
 
-	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "verse")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "verse", make([]float64, 0))
 
 	var searchResults []SearchOutput
 	for i, e := range found {
@@ -48,7 +60,7 @@ func HandleSearchByChapter(c echo.Context, embeddingsByChapter []Embedding, embe
 	chapter := c.QueryParam("chapter")
 	locationQuery := fmt.Sprintf("%s %s", book, chapter)
 
-	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter", make([]float64, 0))
 
 	var searchResults []SearchOutput
 	for i, e := range found {
@@ -71,7 +83,7 @@ func HandleSearchByPassage(c echo.Context, embeddingsByChapter []Embedding, embe
 	verseEnd := c.QueryParam("verseEnd")
 	locationQuery := fmt.Sprintf("%s %s:%s-%s", book, chapter, verseStart, verseEnd)
 
-	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "passage")
+	found := similarity.FindSimilarities(locationQuery, embeddingsByChapter, embeddingsByVerse, verseMap, "passage", make([]float64, 0))
 	found = similarity.FindBestPassages(found, 2, 200)
 	found = similarity.MergePassageResults(found, locationQuery, verseMap)
 
@@ -97,7 +109,7 @@ func HandleQuery(c echo.Context, embeddingsByChapter []Embedding, embeddingsByVe
 		return echo.NewHTTPError(http.StatusBadRequest, "Missing query parameters 'search_by' and 'query'")
 	}
 
-	found := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, searchBy)
+	found := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, searchBy, make([]float64, 0))
 
 	if searchBy == "passage" {
 		found = similarity.FindBestPassages(found, 2, 200)
@@ -122,53 +134,17 @@ func HandleQuery(c echo.Context, embeddingsByChapter []Embedding, embeddingsByVe
 
 func HandleSearchAll(c echo.Context, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) error {
 	query := c.QueryParam("query")
+	searchTermVector := similarity.IfSearchNotExists(query, embeddingsByChapter, embeddingsByVerse, verseMap)
 
-	var wg sync.WaitGroup
-	verseFoundCh := make(chan []Embedding)
-	chapterFoundCh := make(chan []Embedding)
-	passageFoundCh := make(chan []Embedding)
+	passageFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "passage", searchTermVector)
+	passageFound = similarity.FindBestPassages(passageFound, 2, 200)
+	passageFound = similarity.MergePassageResults(passageFound, query, verseMap)
 
-	wg.Add(3)
+	verseFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "verse", searchTermVector)
 
-	go func() {
-		defer wg.Done()
-		verseStart := time.Now()
-		verseFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "verse")
-		fmt.Printf("Search by Verse took: %s\n", time.Since(verseStart))
-		verseFoundCh <- verseFound
-	}()
-
-	go func() {
-		defer wg.Done()
-		chapterStart := time.Now()
-		chapterFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter")
-		fmt.Printf("Search by Chapter took: %s\n", time.Since(chapterStart))
-		chapterFoundCh <- chapterFound
-	}()
-
-	go func() {
-		defer wg.Done()
-		passageStart := time.Now()
-		passageFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "passage")
-		passageFound = similarity.FindBestPassages(passageFound, 2, 200)
-		passageFound = similarity.MergePassageResults(passageFound, query, verseMap)
-		fmt.Printf("Search by Passage took: %s\n", time.Since(passageStart))
-		passageFoundCh <- passageFound
-	}()
-
-	go func() {
-		wg.Wait()
-		close(verseFoundCh)
-		close(chapterFoundCh)
-		close(passageFoundCh)
-	}()
-
-	verseFound := <-verseFoundCh
-	chapterFound := <-chapterFoundCh
-	passageFound := <-passageFoundCh
+	chapterFound := similarity.FindSimilarities(query, embeddingsByChapter, embeddingsByVerse, verseMap, "chapter", searchTermVector)
 
 	// Combine all results and sort them by similarity
-
 	allFound := append(verseFound, append(chapterFound, passageFound...)...)
 	sort.Slice(allFound, func(i, j int) bool {
 		return allFound[i].Similarity > allFound[j].Similarity

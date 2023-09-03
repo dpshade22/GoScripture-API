@@ -167,35 +167,24 @@ func buildPassageResults(chapters map[string][]Tuple, query string, verseMap map
 
 	loc := checkIfLocation(query)
 	locStringPassage := ""
-	if loc.HasLocation {
 
-		// Check if loc.Verse and loc.VerseEnd are populated
-		if loc.Verse > 0 && loc.VerseEnd > 0 {
-			locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
-		} else if loc.Verse > 0 {
-			// If only loc.Verse is populated
-			locStringPassage = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.Verse)
-		} else if loc.VerseEnd > 0 {
-			// If only loc.VerseEnd is populated
-			locStringPassage = fmt.Sprintf("%s %d:%d", loc.Book, loc.Chapter, loc.VerseEnd)
-		} else {
-			// If neither loc.Verse nor loc.VerseEnd is populated, just use the chapter
-			locStringPassage = fmt.Sprintf("%s %d", loc.Book, loc.Chapter)
-		}
+	if loc.HasLocation && loc.Verse > 0 && loc.VerseEnd > 0 {
+		locStringPassage = fmt.Sprintf("%s %d:%d-%d", loc.Book, loc.Chapter, loc.Verse, loc.VerseEnd)
 		fmt.Print("Has location\n")
 		fmt.Print("Found passage\n")
 		fmt.Print("Location: ", locStringPassage, "\n")
+	}
 
-		newEmbed := buildPassageFromLocation(loc, verseMap)
-		if strings.TrimSpace(newEmbed.Verse) != "" {
-			newPassages = append(newPassages, newEmbed)
+	newEmbed := buildPassageFromLocation(loc, verseMap)
+	if strings.TrimSpace(newEmbed.Verse) != "" {
+		newPassages = append(newPassages, newEmbed)
 
-			// Sort bestSequences by Similarity in descending order.
-			sort.Slice(newPassages, func(i, j int) bool {
-				return newPassages[i].Similarity > newPassages[j].Similarity
-			})
-			return newPassages[0 : len(newPassages)-1]
-		}
+		// Sort bestSequences by Similarity in descending order.
+		sort.Slice(newPassages, func(i, j int) bool {
+			return newPassages[i].Similarity > newPassages[j].Similarity
+		})
+		return newPassages[0 : len(newPassages)-1]
+
 	}
 
 	// Sort bestSequences by Similarity in descending order.

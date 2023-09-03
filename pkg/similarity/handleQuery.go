@@ -6,6 +6,7 @@ import (
 	"go-scripture/pkg/embeddings"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/joho/godotenv"
@@ -27,18 +28,15 @@ type Tuple struct {
 	Second float64
 }
 
-func FindSimilarities(query string, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string, searchBy string) []Embedding {
+func FindSimilarities(query string, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string, searchBy string, searchTermVector []float64) []Embedding {
 	bibleEmbeddings := embeddingsByVerse
 	if searchBy == "chapter" {
 		bibleEmbeddings = embeddingsByChapter
 	}
-
 	loc := checkIfLocation(query)
-	if loc.HasLocation {
-		query = swapQueryForPassage(query, loc, verseMap)
+	if len(searchTermVector) == 0 {
+		searchTermVector = IfSearchNotExists(query, embeddingsByChapter, embeddingsByVerse, verseMap)
 	}
-
-	searchTermVector := getSearchVector(query, loc, embeddingsByChapter, embeddingsByVerse, searchBy, verseMap)
 	similartyResults := calculateEmbeddingSimilarity(bibleEmbeddings, searchTermVector)
 	if loc.HasLocation {
 		updateExactMatchSimilarity(searchBy, loc, &similartyResults)
@@ -48,6 +46,16 @@ func FindSimilarities(query string, embeddingsByChapter []Embedding, embeddingsB
 	})
 
 	return similartyResults
+}
+
+func IfSearchNotExists(query string, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) []float64 {
+	loc := checkIfLocation(strings.TrimSpace(query))
+	if loc.HasLocation {
+		query = SwapQueryForPassage(query, loc, verseMap)
+		fmt.Println("Query swapped for passage")
+	}
+	return getSearchVector(query, loc, embeddingsByChapter, embeddingsByVerse, verseMap)
+
 }
 
 func calculateEmbeddingSimilarity(embeddings []Embedding, searchTermVector []float64) []Embedding {
@@ -74,13 +82,13 @@ func calculateEmbeddingSimilarity(embeddings []Embedding, searchTermVector []flo
 	return embeddings
 }
 
-func getSearchVector(query string, loc LocationStruct, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, searchBy string, verseMap map[string]string) []float64 {
+func getSearchVector(query string, loc LocationStruct, embeddingsByChapter []Embedding, embeddingsByVerse []Embedding, verseMap map[string]string) []float64 {
 	vector := make([]float64, len(embeddingsByVerse[0].Embedding))
 	foundLocalEmbedding := false
 	if loc.HasLocation {
-		if searchBy == "chapter" {
-			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByChapter)
-		} else {
+		foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByChapter)
+
+		if !foundLocalEmbedding {
 			foundLocalEmbedding, vector = getEmbeddingByLocation(loc.LocationString, embeddingsByVerse)
 		}
 	}
@@ -91,6 +99,7 @@ func getSearchVector(query string, loc LocationStruct, embeddingsByChapter []Emb
 }
 
 func getQueryEmbedding(query string) []float64 {
+	fmt.Println("Got embedding query")
 	godotenv.Load()
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	client := openai.NewClient(apiKey)
@@ -110,7 +119,7 @@ func getQueryEmbedding(query string) []float64 {
 	return embedding
 }
 
-func swapQueryForPassage(query string, loc LocationStruct, verseMap map[string]string) string {
+func SwapQueryForPassage(query string, loc LocationStruct, verseMap map[string]string) string {
 	fmt.Print("User Input: " + query + "\n")
 	// Check if the query is a valid Bible verse, passage, or chapter
 
