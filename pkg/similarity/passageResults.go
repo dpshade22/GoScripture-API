@@ -8,8 +8,17 @@ import (
 	"strings"
 )
 
-
 func FindBestPassages(verses []Embedding, windowSize int, numSequences int) []Embedding {
+	if len(verses) == 0 {
+		fmt.Println("Error: no verses provided")
+		return nil // or however you want to handle this
+	}
+
+	if windowSize <= 0 || numSequences <= 0 {
+		fmt.Println("Error: windowSize and numSequences must be greater than zero")
+		return nil // or however you want to handle this
+	}
+
 	// Sort the verses list by Location and Verse.
 	sort.Slice(verses, func(i, j int) bool {
 		if verses[i].Location == verses[j].Location {

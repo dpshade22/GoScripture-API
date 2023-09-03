@@ -3,4 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - TARGETPLATFORM=linux/amd64
     image: dpshade22/go-scripture:latest
